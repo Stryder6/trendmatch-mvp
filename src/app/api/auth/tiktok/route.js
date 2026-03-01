@@ -16,7 +16,6 @@ export async function GET(request) {
   }
 
   try {
-    // Exchange code for access token
     const tokenData = await exchangeCodeForToken(code)
 
     if (tokenData.error) {
@@ -26,7 +25,6 @@ export async function GET(request) {
 
     const { access_token, refresh_token, open_id, expires_in } = tokenData.data || tokenData
 
-    // Fetch user profile and stats
     const [userInfoRes, userStatsRes] = await Promise.all([
       getUserInfo(access_token),
       getUserStats(access_token),
@@ -35,8 +33,14 @@ export async function GET(request) {
     const userInfo = userInfoRes.data?.user || {}
     const userStats = userStatsRes.data?.user || {}
 
-    // Save to Supabase
     const supabase = createServerClient()
+
+    // Check if returning user
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, onboarding_complete')
+      .eq('tiktok_open_id', open_id)
+      .single()
 
     const { data: user, error: dbError } = await supabase
       .from('users')
@@ -54,9 +58,7 @@ export async function GET(request) {
         refresh_token,
         token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'tiktok_open_id',
-      })
+      }, { onConflict: 'tiktok_open_id' })
       .select()
       .single()
 
@@ -65,13 +67,15 @@ export async function GET(request) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=db_failed`)
     }
 
-    // Set a simple session cookie with the user ID
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/onboarding`)
+    // Returning users go to dashboard, new users go to auto-analyze
+    const redirectPath = existingUser?.onboarding_complete ? '/dashboard' : '/analyzing'
+
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}${redirectPath}`)
     response.cookies.set('tm_user_id', user.id, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30,
     })
 
     return response

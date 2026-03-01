@@ -15,7 +15,6 @@ export async function POST(request) {
 
     const supabase = createServerClient()
 
-    // Get user from DB
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -26,8 +25,25 @@ export async function POST(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Get niches from request body
-    const { niches } = await request.json()
+    // Check usage limits
+    const limit = user.plan === 'pro' ? 999 : user.plan === 'early_bird' ? 999 : 1
+    if (user.analyses_used >= limit) {
+      return NextResponse.json({
+        error: 'limit_reached',
+        message: 'You have used your free analysis. Upgrade to Pro for unlimited analyses.',
+        analyses_used: user.analyses_used,
+        analyses_limit: limit,
+      }, { status: 403 })
+    }
+
+    // Get optional niches from request body
+    let niches = []
+    try {
+      const body = await request.json()
+      niches = body.niches || []
+    } catch (e) {
+      // No body or invalid JSON - that's fine, AI will auto-detect
+    }
 
     // Fetch user's videos from TikTok
     let videos = []
@@ -36,7 +52,6 @@ export async function POST(request) {
       videos = videosRes.data?.videos || []
     } catch (e) {
       console.error('Failed to fetch videos:', e)
-      // Continue with empty videos - AI can still recommend based on profile
     }
 
     // Run AI analysis
@@ -53,6 +68,9 @@ export async function POST(request) {
       videos,
       niches,
     })
+
+    // Extract detected niches from products
+    const detectedNiches = [...new Set(products.map(p => p.detected_niche).filter(Boolean))]
 
     // Save products to DB
     const productRecords = products.map(p => ({
@@ -85,13 +103,24 @@ export async function POST(request) {
       console.error('Insert error:', insertError)
     }
 
-    // Update user niches
+    // Update user
     await supabase
       .from('users')
-      .update({ niches, onboarding_complete: true })
+      .update({
+        niches: detectedNiches.length > 0 ? detectedNiches : (niches.length > 0 ? niches : user.niches),
+        onboarding_complete: true,
+        analyses_used: (user.analyses_used || 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', userId)
 
-    return NextResponse.json({ products, success: true })
+    return NextResponse.json({
+      products,
+      success: true,
+      detected_niches: detectedNiches,
+      analyses_used: (user.analyses_used || 0) + 1,
+      analyses_limit: limit,
+    })
   } catch (err) {
     console.error('Analysis error:', err)
     return NextResponse.json({ error: 'Analysis failed' }, { status: 500 })

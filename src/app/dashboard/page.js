@@ -73,41 +73,43 @@ export default function DashboardPage() {
     setReanalyzing(true)
     setAnalyzeStep(0)
 
-    // Animate steps
+    // Start API call in background
+    let apiDone = false
+    let apiError = null
+    fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ niches: user?.niches || [] }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        apiDone = true
+        if (data.error === "limit_reached") apiError = "limit"
+      })
+      .catch(() => { apiDone = true; apiError = "failed" })
+
+    // Animate through all steps on fixed schedule
+    let currentStep = 0
     const interval = setInterval(() => {
-      setAnalyzeStep(prev => {
-        if (prev < ANALYZE_STEPS.length - 1) return prev + 1
-        return prev
-      })
-    }, 2500)
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niches: user?.niches || [] }),
-      })
-      const data = await res.json()
-      clearInterval(interval)
-
-      if (data.error === 'limit_reached') {
-        setReanalyzing(false)
-        alert('You have used your free analysis. Upgrade to Pro for unlimited analyses.')
-      } else if (data.success) {
-        setAnalyzeStep(ANALYZE_STEPS.length - 1)
-        setTimeout(async () => {
-          await fetchProducts()
-          setReanalyzing(false)
-        }, 1500)
+      currentStep++
+      if (currentStep < ANALYZE_STEPS.length) {
+        setAnalyzeStep(currentStep)
       } else {
-        setReanalyzing(false)
+        clearInterval(interval)
+        const check = setInterval(async () => {
+          if (apiDone) {
+            clearInterval(check)
+            if (apiError === "limit") {
+              setReanalyzing(false)
+              alert("You have used your free analysis. Upgrade to Pro for unlimited analyses.")
+            } else {
+              await fetchProducts()
+              setTimeout(() => setReanalyzing(false), 800)
+            }
+          }
+        }, 500)
       }
-    } catch (err) {
-      clearInterval(interval)
-      console.error('Re-analyze failed:', err)
-      setReanalyzing(false)
-    }
-  }
+    }, 2000)  }
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })

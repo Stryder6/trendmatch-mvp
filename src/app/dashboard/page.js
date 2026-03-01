@@ -9,6 +9,14 @@ const TREND_COLORS = {
   new: { bg: 'rgba(139,92,246,0.12)', color: '#8B5CF6', label: '✨ New' },
 }
 
+const ANALYZE_STEPS = [
+  'Connecting to your TikTok profile...',
+  'Scanning your recent videos...',
+  'Analyzing your audience & content style...',
+  'Matching trending products to your niche...',
+  'Building your product recommendations...',
+]
+
 export default function DashboardPage() {
   const [products, setProducts] = useState([])
   const [user, setUser] = useState(null)
@@ -17,6 +25,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState('all')
   const [activeView, setActiveView] = useState('matches')
   const [reanalyzing, setReanalyzing] = useState(false)
+  const [analyzeStep, setAnalyzeStep] = useState(0)
   const router = useRouter()
 
   useEffect(() => {
@@ -41,37 +50,61 @@ export default function DashboardPage() {
   }
 
   const handleSave = async (productId) => {
+    // Optimistic update
+    setProducts(prev => prev.map(p =>
+      p.id === productId ? { ...p, saved: !p.saved } : p
+    ))
     try {
       await fetch('/api/products/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId }),
       })
+    } catch (err) {
+      console.error('Save failed:', err)
+      // Revert on failure
       setProducts(prev => prev.map(p =>
         p.id === productId ? { ...p, saved: !p.saved } : p
       ))
-    } catch (err) {
-      console.error('Save failed:', err)
     }
   }
 
   const handleReanalyze = async () => {
     setReanalyzing(true)
+    setAnalyzeStep(0)
+
+    // Animate steps
+    const interval = setInterval(() => {
+      setAnalyzeStep(prev => {
+        if (prev < ANALYZE_STEPS.length - 1) return prev + 1
+        return prev
+      })
+    }, 2500)
+
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niches: user.niches || [] }),
+        body: JSON.stringify({ niches: user?.niches || [] }),
       })
       const data = await res.json()
+      clearInterval(interval)
+
       if (data.error === 'limit_reached') {
+        setReanalyzing(false)
         alert('You have used your free analysis. Upgrade to Pro for unlimited analyses.')
       } else if (data.success) {
-        await fetchProducts()
+        setAnalyzeStep(ANALYZE_STEPS.length - 1)
+        setTimeout(async () => {
+          await fetchProducts()
+          setReanalyzing(false)
+        }, 1500)
+      } else {
+        setReanalyzing(false)
       }
     } catch (err) {
+      clearInterval(interval)
       console.error('Re-analyze failed:', err)
-    } finally {
       setReanalyzing(false)
     }
   }
@@ -99,6 +132,50 @@ export default function DashboardPage() {
     )
   }
 
+  // Re-analyzing overlay
+  if (reanalyzing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0A0B' }}>
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF3B5C, #FF6B81)' }}>
+            <span className="text-3xl">🔍</span>
+          </div>
+          <h1 className="font-display text-2xl font-extrabold mb-3" style={{ color: '#F0F0F2' }}>
+            Re-analyzing Your Profile
+          </h1>
+          <p className="text-sm mb-8" style={{ color: '#8A8A96' }}>
+            Finding fresh product matches based on your latest content.
+          </p>
+          <div className="space-y-3 text-left mb-8">
+            {ANALYZE_STEPS.map((s, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                  style={{
+                    background: i < analyzeStep ? '#FF3B5C' : i === analyzeStep ? 'rgba(255,59,92,0.2)' : '#16161A',
+                    color: i <= analyzeStep ? 'white' : '#5A5A66',
+                    border: i === analyzeStep ? '2px solid #FF3B5C' : '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                  {i < analyzeStep ? '✓' : i + 1}
+                </div>
+                <span className="text-sm" style={{ color: i <= analyzeStep ? '#F0F0F2' : '#5A5A66' }}>
+                  {s}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#16161A' }}>
+            <div className="h-full rounded-full transition-all duration-1000"
+              style={{
+                background: 'linear-gradient(90deg, #FF3B5C, #FF6B81)',
+                width: `${((analyzeStep + 1) / ANALYZE_STEPS.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#0A0A0B' }}>
       {/* Sidebar */}
@@ -113,7 +190,7 @@ export default function DashboardPage() {
         <NavItem icon="📦" label="Saved Products" active={activeView === 'saved'} onClick={() => setActiveView('saved')} />
 
         <div className="text-[10px] uppercase tracking-widest px-3 pt-4 pb-2 font-semibold" style={{ color: '#5A5A66' }}>Account</div>
-        <NavItem icon="🎯" label="My Niche Profile" active={activeView === 'profile'} onClick={() => setActiveView('profile')} />
+        <NavItem icon="🎯" label="My Profile" active={activeView === 'profile'} onClick={() => setActiveView('profile')} />
 
         <div className="flex-1" />
 
@@ -147,7 +224,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="ml-60 p-8">
         {activeView === 'profile' ? (
-          <ProfileView user={user} />
+          <ProfileView user={user} onReanalyze={handleReanalyze} />
         ) : (
           <>
             {/* Header */}
@@ -157,11 +234,10 @@ export default function DashboardPage() {
               </h1>
               <button
                 onClick={handleReanalyze}
-                disabled={reanalyzing}
                 className="px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2"
-                style={{ background: reanalyzing ? '#1C1C21' : '#FF3B5C', color: reanalyzing ? '#5A5A66' : 'white' }}
+                style={{ background: '#FF3B5C', color: 'white' }}
               >
-                {reanalyzing ? '⏳ Analyzing...' : '🔄 Re-analyze'}
+                🔄 Re-analyze My Profile
               </button>
             </div>
 
@@ -216,13 +292,13 @@ export default function DashboardPage() {
                 filteredProducts.map((product, i) => (
                   <div
                     key={product.id || i}
-                    className="grid grid-cols-[40px_2fr_0.8fr_0.8fr_0.8fr_0.8fr_140px] px-5 py-4 items-center transition-colors cursor-pointer"
+                    className="grid grid-cols-[40px_2fr_0.8fr_0.8fr_0.8fr_0.8fr_140px] px-5 py-4 items-center transition-colors"
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <div className="font-display font-bold text-sm" style={{ color: '#5A5A66' }}>{i + 1}</div>
-                    <div onClick={() => setSelectedProduct(product)}>
+                    <div className="cursor-pointer" onClick={() => setSelectedProduct(product)}>
                       <div className="text-sm font-semibold" style={{ color: '#F0F0F2' }}>{product.product_name}</div>
                       <div className="text-[11px]" style={{ color: '#5A5A66' }}>{product.category}</div>
                     </div>
@@ -239,12 +315,15 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleSave(product.id); }}
-                        className="px-2 py-1.5 rounded-md text-xs"
-                        style={{ background: product.saved ? 'rgba(255,59,92,0.15)' : 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                        onClick={() => handleSave(product.id)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+                        style={{
+                          background: product.saved ? 'rgba(255,59,92,0.15)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${product.saved ? 'rgba(255,59,92,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                        }}
                         title={product.saved ? 'Unsave' : 'Save'}
                       >
-                        {product.saved ? '🔖' : '🏷️'}
+                        {product.saved ? '❤️' : '🤍'}
                       </button>
                       <button
                         onClick={() => setSelectedProduct(product)}
@@ -269,11 +348,11 @@ export default function DashboardPage() {
   )
 }
 
-function ProfileView({ user }) {
+function ProfileView({ user, onReanalyze }) {
   if (!user) return null
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-extrabold mb-6" style={{ color: '#F0F0F2' }}>🎯 My Niche Profile</h1>
+      <h1 className="font-display text-2xl font-extrabold mb-6" style={{ color: '#F0F0F2' }}>🎯 My Profile</h1>
       <div className="rounded-xl p-6 mb-4" style={{ background: '#16161A', border: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-4 mb-6">
           {user.avatar_url ? (
@@ -302,16 +381,28 @@ function ProfileView({ user }) {
             <div className="text-[11px]" style={{ color: '#5A5A66' }}>Videos</div>
           </div>
         </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#5A5A66' }}>Your Niches</div>
-          <div className="flex flex-wrap gap-2">
-            {(user.niches || []).map(n => (
-              <span key={n} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(255,59,92,0.08)', color: '#FF3B5C', border: '1px solid rgba(255,59,92,0.15)' }}>
-                {n}
-              </span>
-            ))}
+        {user.niches && user.niches.length > 0 && (
+          <div className="mb-6">
+            <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#5A5A66' }}>Detected Niches</div>
+            <div className="flex flex-wrap gap-2">
+              {user.niches.map(n => (
+                <span key={n} className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(255,59,92,0.08)', color: '#FF3B5C', border: '1px solid rgba(255,59,92,0.15)' }}>
+                  {n}
+                </span>
+              ))}
+            </div>
           </div>
+        )}
+        <div className="text-xs mb-4" style={{ color: '#5A5A66' }}>
+          Analyses used: {user.analyses_used || 0} / {user.plan === 'pro' || user.plan === 'early_bird' ? 'Unlimited' : '1 (Free plan)'}
         </div>
+        <button
+          onClick={onReanalyze}
+          className="w-full py-3 rounded-xl text-sm font-semibold"
+          style={{ background: '#FF3B5C', color: 'white' }}
+        >
+          🔄 Re-analyze My Profile
+        </button>
       </div>
     </div>
   )
@@ -321,7 +412,7 @@ function NavItem({ icon, label, active, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] mb-0.5 cursor-pointer"
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] mb-0.5 cursor-pointer transition-colors"
       style={{
         background: active ? 'rgba(255,59,92,0.1)' : 'transparent',
         color: active ? '#FF3B5C' : '#8A8A96',
@@ -368,11 +459,18 @@ function ProductModal({ product, onClose, onSave }) {
             <h2 className="font-display text-xl font-extrabold mb-1" style={{ color: '#F0F0F2' }}>{product.product_name}</h2>
             <p className="text-sm" style={{ color: '#8A8A96' }}>{product.category}</p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => onSave(product.id)} className="text-xl" title={product.saved ? 'Unsave' : 'Save'}>
-              {product.saved ? '🔖' : '🏷️'}
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => onSave(product.id)}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all"
+              style={{
+                background: product.saved ? 'rgba(255,59,92,0.15)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${product.saved ? 'rgba(255,59,92,0.3)' : 'rgba(255,255,255,0.06)'}`,
+              }}
+            >
+              {product.saved ? '❤️' : '🤍'}
             </button>
-            <button onClick={onClose} className="text-2xl" style={{ color: '#5A5A66' }}>×</button>
+            <button onClick={onClose} className="text-2xl leading-none" style={{ color: '#5A5A66' }}>×</button>
           </div>
         </div>
         <p className="text-sm mb-6" style={{ color: '#8A8A96', lineHeight: 1.6 }}>{product.description}</p>

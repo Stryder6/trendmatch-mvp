@@ -68,7 +68,7 @@ export default function HomePage() {
         <h2 className="font-display text-2xl font-extrabold text-center mb-12" style={{ color: '#F0F0F2' }}>
           How It Works
         </h2>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
             { step: '01', emoji: '🔗', title: 'Connect TikTok', desc: 'Link your account with one click. We analyze your content, niche, and audience.' },
             { step: '02', emoji: '🤖', title: 'AI Matches Products', desc: 'Our AI finds trending products that fit your audience with margins and sourcing.' },
@@ -89,7 +89,7 @@ export default function HomePage() {
         <h2 className="font-display text-2xl font-extrabold text-center mb-12" style={{ color: '#F0F0F2' }}>
           Everything You Need to Sell Smart
         </h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { emoji: '🎯', title: 'Audience-Matched Products', desc: 'Products selected specifically for YOUR audience, not generic bestsellers.' },
             { emoji: '📊', title: 'Margin Calculator', desc: 'See estimated profit margins for every product with supplier pricing built in.' },
@@ -112,7 +112,7 @@ export default function HomePage() {
         <h2 className="font-display text-2xl font-extrabold text-center mb-12" style={{ color: '#F0F0F2' }}>
           Simple Pricing
         </h2>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <PricingCard
             title="Free"
             price="$0"

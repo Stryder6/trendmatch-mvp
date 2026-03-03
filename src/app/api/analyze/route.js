@@ -25,16 +25,26 @@ export async function POST(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    // Monthly reset for free users
+    const now = new Date()
+    const lastReset = user.last_reset_at ? new Date(user.last_reset_at) : null
+    const needsReset = !lastReset || (now.getMonth() !== lastReset.getMonth()) || (now.getFullYear() !== lastReset.getFullYear())
+    if (needsReset && user.plan !== "pro" && user.plan !== "early_bird") {
+      await supabase.from("users").update({ analyses_used: 0, last_reset_at: now.toISOString() }).eq("id", userId)
+      user.analyses_used = 0
+    }
+
     // Check usage limits
-    const limit = user.plan === 'pro' ? 999 : user.plan === 'early_bird' ? 999 : 1
+    const limit = user.plan === "pro" ? 999 : user.plan === "early_bird" ? 999 : 1
     if (user.analyses_used >= limit) {
       return NextResponse.json({
-        error: 'limit_reached',
-        message: 'You have used your free analysis. Upgrade to Pro for unlimited analyses.',
+        error: "limit_reached",
+        message: "You have used your free analysis this month. Upgrade to Pro for unlimited analyses.",
         analyses_used: user.analyses_used,
         analyses_limit: limit,
+        resets_at: new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString(),
       }, { status: 403 })
-    }
+    }    }
 
     // Get optional niches from request body
     let niches = []

@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [reanalyzing, setReanalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const router = useRouter()
 
   useEffect(() => { fetchProducts() }, [])
@@ -61,7 +62,7 @@ export default function DashboardPage() {
     const iv = setInterval(() => {
       cur++
       if (cur < ANALYZE_STEPS.length) setAnalyzeStep(cur)
-      else { clearInterval(iv); const ck = setInterval(async () => { if (apiDone) { clearInterval(ck); if (apiError === "limit") { setReanalyzing(false); alert("Free analysis used. Upgrade to Pro for unlimited.") } else { await fetchProducts(); setTimeout(() => setReanalyzing(false), 800) } } }, 500) }
+      else { clearInterval(iv); const ck = setInterval(async () => { if (apiDone) { clearInterval(ck); if (apiError === "limit") { setReanalyzing(false); setShowUpgrade(true) } else { await fetchProducts(); setTimeout(() => setReanalyzing(false), 800) } } }, 500) }
     }, 2000)
   }
 
@@ -199,6 +200,50 @@ export default function DashboardPage() {
           </>
         )}
         {selectedProduct && <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onSave={handleSave} />}
+        {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+      </div>
+    </div>
+  )
+}
+
+function UpgradeModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 sm:p-6" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 sm:p-8" style={{ background: '#16161A', border: '1px solid rgba(255,255,255,0.06)' }} onClick={e => e.stopPropagation()}>
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(255,59,92,0.15), rgba(139,92,246,0.15))', border: '1px solid rgba(255,59,92,0.2)' }}>
+            <span className="text-3xl">⚡</span>
+          </div>
+          <h2 className="text-xl font-extrabold mb-2" style={{ color: '#F0F0F2' }}>You've Used Your Free Analysis</h2>
+          <p className="text-sm mb-6" style={{ color: '#8A8A96', lineHeight: 1.6 }}>
+            Free accounts get 1 analysis per month. Upgrade to Pro for unlimited analyses, daily trend alerts, and content templates.
+          </p>
+
+          <div className="rounded-xl p-5 mb-5 text-left" style={{ background: '#0A0A0B', border: '1px solid rgba(255,59,92,0.15)' }}>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: '#FF3B5C' }}>Pro Plan</div>
+                <div className="text-2xl font-extrabold" style={{ color: '#F0F0F2' }}>$49<span className="text-sm font-normal" style={{ color: '#5A5A66' }}>/mo</span></div>
+              </div>
+              <div className="px-3 py-1 rounded-full text-[10px] font-semibold" style={{ background: 'rgba(0,209,193,0.12)', color: '#00D1C1' }}>Most Popular</div>
+            </div>
+            <div className="space-y-2">
+              {['Unlimited product analyses', 'Daily trend alerts', 'Content templates for every product', 'Supplier sourcing links', 'Priority support'].map(f => (
+                <div key={f} className="flex items-center gap-2 text-sm" style={{ color: '#8A8A96' }}>
+                  <span style={{ color: '#00D1C1' }}>✓</span> {f}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button className="w-full py-3.5 rounded-xl text-sm font-semibold mb-3" style={{ background: '#FF3B5C', color: 'white' }}>
+            Upgrade to Pro — $49/mo
+          </button>
+          <button onClick={onClose} className="w-full py-3 rounded-xl text-sm font-medium" style={{ color: '#5A5A66' }}>
+            Maybe Later
+          </button>
+          <p className="text-[11px] mt-4" style={{ color: '#5A5A66' }}>Your free analysis resets next month. Cancel anytime.</p>
+        </div>
       </div>
     </div>
   )

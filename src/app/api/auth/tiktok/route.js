@@ -8,11 +8,11 @@ export async function GET(request) {
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=auth_denied`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth-error?code=auth_denied`)
   }
 
   if (!code) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=no_code`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth-error?code=no_code`)
   }
 
   try {
@@ -20,7 +20,7 @@ export async function GET(request) {
 
     if (tokenData.error) {
       console.error('Token exchange error:', tokenData)
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=token_failed`)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth-error?code=token_failed`)
     }
 
     const { access_token, refresh_token, open_id, expires_in } = tokenData.data || tokenData
@@ -64,7 +64,7 @@ export async function GET(request) {
 
     if (dbError) {
       console.error('DB error:', dbError)
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=db_failed`)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth-error?code=db_failed`)
     }
 
     // Returning users go to dashboard, new users go to auto-analyze
@@ -81,6 +81,6 @@ export async function GET(request) {
     return response
   } catch (err) {
     console.error('Auth callback error:', err)
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=unknown`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth-error?code=unknown`)
   }
 }

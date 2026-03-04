@@ -314,7 +314,9 @@ function ProductModal({ product, onClose, onSave }) {
         </div>
         <div className="rounded-xl p-4 mb-3" style={{ background: '#0A0A0B' }}><div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#FF3B5C' }}>📈 Why Now</div><p className="text-sm" style={{ color: '#8A8A96' }}>{product.why_now}</p></div>
         <div className="rounded-xl p-4 mb-3" style={{ background: '#0A0A0B' }}><div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#8B5CF6' }}>🎬 Content Hook</div><p className="text-sm font-medium" style={{ color: '#F0F0F2' }}>"{product.content_hook}"</p><p className="text-xs mt-2" style={{ color: '#5A5A66' }}>Format: {product.content_format}</p></div>
-        <div className="rounded-xl p-4" style={{ background: '#0A0A0B' }}><div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#00D1C1' }}>📦 Sourcing</div><p className="text-sm" style={{ color: '#8A8A96' }}>{product.sourcing_notes}</p></div>
+        <div className="rounded-xl p-4" style={{ background: '#0A0A0B' }}><div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#00D1C1' }}>📦 Sourcing</div><p className="text-sm" style={{ color: '#8A8A96' }}>{product.sourcing_notes}</p>
+          {product.cj_sku && <a href={`https://cjdropshipping.com/search.html?key=${encodeURIComponent(product.product_name)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: 'rgba(0,209,193,0.1)', color: '#00D1C1', border: '1px solid rgba(0,209,193,0.15)' }}>🔗 Find on CJ Dropshipping</a>}
+        </div>
       </div>
     </div>
   )

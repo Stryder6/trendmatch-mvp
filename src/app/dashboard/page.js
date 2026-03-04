@@ -165,7 +165,10 @@ export default function DashboardPage() {
               {filteredProducts.length === 0 ? <div className="py-12 text-center" style={{ color: '#5A5A66' }}>{activeView === 'saved' ? 'No saved products yet.' : 'No products match this filter.'}</div> : filteredProducts.map((p, i) => (
                 <div key={p.id || i} className="grid grid-cols-[40px_2fr_0.8fr_0.8fr_0.8fr_0.8fr_140px] px-5 py-4 items-center transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <div className="font-bold text-sm" style={{ color: '#5A5A66' }}>{i + 1}</div>
-                  <div className="cursor-pointer" onClick={() => setSelectedProduct(p)}><div className="text-sm font-semibold" style={{ color: '#F0F0F2' }}>{p.product_name}</div><div className="text-[11px]" style={{ color: '#5A5A66' }}>{p.category}</div></div>
+                  <div className="cursor-pointer flex items-center gap-3" onClick={() => setSelectedProduct(p)}>
+                    {p.product_image && <img src={p.product_image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />}
+                    <div><div className="text-sm font-semibold" style={{ color: '#F0F0F2' }}>{p.product_name}</div><div className="text-[11px]" style={{ color: '#5A5A66' }}>{p.category}</div></div>
+                  </div>
                   <div><span className="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: TREND_COLORS[p.trend_status]?.bg || TREND_COLORS.new.bg, color: TREND_COLORS[p.trend_status]?.color || TREND_COLORS.new.color }}>{TREND_COLORS[p.trend_status]?.label || '✨ New'}</span></div>
                   <div className="text-sm" style={{ color: '#F0F0F2' }}>{p.suggested_price}</div>
                   <div className="text-sm font-semibold" style={{ color: '#00D1C1' }}>{p.estimated_margin}</div>
@@ -183,7 +186,10 @@ export default function DashboardPage() {
               {filteredProducts.length === 0 ? <div className="py-12 text-center rounded-xl" style={{ background: '#16161A', color: '#5A5A66' }}>{activeView === 'saved' ? 'No saved products yet.' : 'No products match this filter.'}</div> : filteredProducts.map((p, i) => (
                 <div key={p.id || i} className="rounded-xl p-4" style={{ background: '#16161A', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 cursor-pointer" onClick={() => setSelectedProduct(p)}><div className="text-sm font-semibold mb-0.5" style={{ color: '#F0F0F2' }}>{p.product_name}</div><div className="text-[11px]" style={{ color: '#5A5A66' }}>{p.category}</div></div>
+                    <div className="flex-1 cursor-pointer flex items-center gap-3" onClick={() => setSelectedProduct(p)}>
+                      {p.product_image && <img src={p.product_image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" style={{ border: '1px solid rgba(255,255,255,0.06)' }} />}
+                      <div><div className="text-sm font-semibold mb-0.5" style={{ color: '#F0F0F2' }}>{p.product_name}</div><div className="text-[11px]" style={{ color: '#5A5A66' }}>{p.category}</div></div>
+                    </div>
                     <button onClick={() => handleSave(p.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ml-2" style={{ background: p.saved ? 'rgba(255,59,92,0.15)' : 'rgba(255,255,255,0.03)', border: `1px solid ${p.saved ? 'rgba(255,59,92,0.3)' : 'rgba(255,255,255,0.06)'}` }}>{p.saved ? '❤️' : '🤍'}</button>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
@@ -292,6 +298,7 @@ function ProductModal({ product, onClose, onSave }) {
             </div>
             <h2 className="text-lg sm:text-xl font-extrabold mb-1" style={{ color: '#F0F0F2' }}>{product.product_name}</h2>
             <p className="text-sm" style={{ color: '#8A8A96' }}>{product.category}</p>
+            {product.cj_sku && <p className="text-[11px] mt-1" style={{ color: '#5A5A66' }}>SKU: {product.cj_sku}</p>}
           </div>
           <div className="flex gap-2 items-center flex-shrink-0 ml-3">
             <button onClick={() => onSave(product.id)} className="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style={{ background: product.saved ? 'rgba(255,59,92,0.15)' : 'rgba(255,255,255,0.03)', border: `1px solid ${product.saved ? 'rgba(255,59,92,0.3)' : 'rgba(255,255,255,0.06)'}` }}>{product.saved ? '❤️' : '🤍'}</button>
@@ -299,6 +306,7 @@ function ProductModal({ product, onClose, onSave }) {
           </div>
         </div>
         <p className="text-sm mb-5" style={{ color: '#8A8A96', lineHeight: 1.6 }}>{product.description}</p>
+        {product.product_image && <div className="mb-5 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}><img src={product.product_image} alt={product.product_name} className="w-full h-48 object-contain" style={{ background: '#0A0A0B' }} /></div>}
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
           {[['Price', product.suggested_price, '#F0F0F2'], ['Cost', product.estimated_cost, '#F0F0F2'], ['Margin', product.estimated_margin, '#00D1C1']].map(([l, v, c]) => (
             <div key={l} className="rounded-xl p-3 sm:p-4" style={{ background: '#0A0A0B' }}><div className="text-[9px] sm:text-[10px] uppercase tracking-wider mb-1" style={{ color: '#5A5A66' }}>{l}</div><div className="text-base sm:text-lg font-bold" style={{ color: c }}>{v}</div></div>

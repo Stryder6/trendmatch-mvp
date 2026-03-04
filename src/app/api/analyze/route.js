@@ -98,6 +98,8 @@ export async function POST(request) {
       content_format: p.content_format,
       sourcing_notes: p.sourcing_notes,
       why_now: p.why_now,
+      product_image: p.product_image || null,
+      cj_sku: p.cj_sku || null,
       created_at: new Date().toISOString(),
     }))
 

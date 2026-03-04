@@ -82,6 +82,30 @@ export async function POST(request) {
     // Extract detected niches from products
     const detectedNiches = [...new Set(products.map(p => p.detected_niche).filter(Boolean))]
 
+    // Fetch product images from CJ Dropshipping
+    const CJ_BASE = 'https://developers.cjdropshipping.com/api2.0/v1'
+    const cjToken = process.env.CJ_ACCESS_TOKEN
+    if (cjToken) {
+      await Promise.all(products.map(async (p) => {
+        if (p.product_image) return
+        try {
+          // Search using key words from product name
+          const words = p.product_name.split(' ').slice(0, 2).join(' ')
+          const res = await fetch(
+            `${CJ_BASE}/product/list?pageNum=1&pageSize=5&productNameEn=${encodeURIComponent(words)}`,
+            { headers: { 'CJ-Access-Token': cjToken } }
+          )
+          const data = await res.json()
+          if (data.code === 200 && data.data?.list) {
+            const match = data.data.list.find(item => item.productImage)
+            if (match) p.product_image = match.productImage
+          }
+        } catch (e) {
+          // Silent fail — image is optional
+        }
+      }))
+    }
+
     // Save products to DB
     const productRecords = products.map(p => ({
       user_id: userId,

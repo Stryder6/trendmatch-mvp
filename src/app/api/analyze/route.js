@@ -164,6 +164,8 @@ export async function POST(request) {
       if (!matched) p.product_image = defaultImage
     }
 
+    console.log('Products with images:', products.map(p => ({ name: p.product_name, hasImg: !!p.product_image, sku: p.cj_sku })))
+
     // Save products to DB
     const productRecords = products.map(p => ({
       user_id: userId,

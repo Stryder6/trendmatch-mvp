@@ -44,7 +44,7 @@ export async function POST(request) {
         analyses_limit: limit,
         resets_at: new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString(),
       }, { status: 403 })
-    }    }
+    }
 
     // Get optional niches from request body
     let niches = []

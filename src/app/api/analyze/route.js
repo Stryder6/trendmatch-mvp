@@ -82,28 +82,86 @@ export async function POST(request) {
     // Extract detected niches from products
     const detectedNiches = [...new Set(products.map(p => p.detected_niche).filter(Boolean))]
 
-    // Fetch product images from CJ Dropshipping
-    const CJ_BASE = 'https://developers.cjdropshipping.com/api2.0/v1'
-    const cjToken = process.env.CJ_ACCESS_TOKEN
-    if (cjToken) {
-      await Promise.all(products.map(async (p) => {
-        if (p.product_image) return
+    // Assign product images from Pexels (free API) or fallback to category-based images
+    const PEXELS_KEY = process.env.PEXELS_API_KEY
+    if (PEXELS_KEY) {
+      for (const p of products) {
+        if (p.product_image) continue
         try {
-          // Search using key words from product name
-          const words = p.product_name.split(' ').slice(0, 2).join(' ')
+          const query = p.product_name.split(' ').slice(0, 3).join(' ')
           const res = await fetch(
-            `${CJ_BASE}/product/list?pageNum=1&pageSize=5&productNameEn=${encodeURIComponent(words)}`,
-            { headers: { 'CJ-Access-Token': cjToken } }
+            `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' product')}&per_page=1&orientation=square`,
+            { headers: { Authorization: PEXELS_KEY } }
           )
           const data = await res.json()
-          if (data.code === 200 && data.data?.list) {
-            const match = data.data.list.find(item => item.productImage)
-            if (match) p.product_image = match.productImage
+          if (data.photos?.[0]) {
+            p.product_image = data.photos[0].src.medium
           }
-        } catch (e) {
-          // Silent fail — image is optional
+        } catch (e) { /* silent */ }
+      }
+    }
+
+    // Fallback: assign category-based stock images for any products still missing images
+    const categoryImages = {
+      lamp: 'https://images.pexels.com/photos/1112598/pexels-photo-1112598.jpeg?auto=compress&cs=tinysrgb&w=400',
+      light: 'https://images.pexels.com/photos/1112598/pexels-photo-1112598.jpeg?auto=compress&cs=tinysrgb&w=400',
+      led: 'https://images.pexels.com/photos/1112598/pexels-photo-1112598.jpeg?auto=compress&cs=tinysrgb&w=400',
+      projector: 'https://images.pexels.com/photos/3945683/pexels-photo-3945683.jpeg?auto=compress&cs=tinysrgb&w=400',
+      speaker: 'https://images.pexels.com/photos/1279107/pexels-photo-1279107.jpeg?auto=compress&cs=tinysrgb&w=400',
+      earbuds: 'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=400',
+      headphone: 'https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=400',
+      phone: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=400',
+      charger: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=400',
+      watch: 'https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg?auto=compress&cs=tinysrgb&w=400',
+      bracelet: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=400',
+      jewelry: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=400',
+      ring: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=400',
+      necklace: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=400',
+      skincare: 'https://images.pexels.com/photos/3685530/pexels-photo-3685530.jpeg?auto=compress&cs=tinysrgb&w=400',
+      beauty: 'https://images.pexels.com/photos/3685530/pexels-photo-3685530.jpeg?auto=compress&cs=tinysrgb&w=400',
+      makeup: 'https://images.pexels.com/photos/2533266/pexels-photo-2533266.jpeg?auto=compress&cs=tinysrgb&w=400',
+      serum: 'https://images.pexels.com/photos/3685530/pexels-photo-3685530.jpeg?auto=compress&cs=tinysrgb&w=400',
+      bottle: 'https://images.pexels.com/photos/1342529/pexels-photo-1342529.jpeg?auto=compress&cs=tinysrgb&w=400',
+      water: 'https://images.pexels.com/photos/1342529/pexels-photo-1342529.jpeg?auto=compress&cs=tinysrgb&w=400',
+      kitchen: 'https://images.pexels.com/photos/4397919/pexels-photo-4397919.jpeg?auto=compress&cs=tinysrgb&w=400',
+      blender: 'https://images.pexels.com/photos/4397919/pexels-photo-4397919.jpeg?auto=compress&cs=tinysrgb&w=400',
+      cup: 'https://images.pexels.com/photos/1813466/pexels-photo-1813466.jpeg?auto=compress&cs=tinysrgb&w=400',
+      mug: 'https://images.pexels.com/photos/1813466/pexels-photo-1813466.jpeg?auto=compress&cs=tinysrgb&w=400',
+      bag: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=400',
+      backpack: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=400',
+      fitness: 'https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=400',
+      yoga: 'https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=400',
+      mat: 'https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=400',
+      pet: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400',
+      dog: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400',
+      cat: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400',
+      candle: 'https://images.pexels.com/photos/3270223/pexels-photo-3270223.jpeg?auto=compress&cs=tinysrgb&w=400',
+      diffuser: 'https://images.pexels.com/photos/3270223/pexels-photo-3270223.jpeg?auto=compress&cs=tinysrgb&w=400',
+      aroma: 'https://images.pexels.com/photos/3270223/pexels-photo-3270223.jpeg?auto=compress&cs=tinysrgb&w=400',
+      pillow: 'https://images.pexels.com/photos/545012/pexels-photo-545012.jpeg?auto=compress&cs=tinysrgb&w=400',
+      cushion: 'https://images.pexels.com/photos/545012/pexels-photo-545012.jpeg?auto=compress&cs=tinysrgb&w=400',
+      decor: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400',
+      home: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400',
+      mirror: 'https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=400',
+      brush: 'https://images.pexels.com/photos/2533266/pexels-photo-2533266.jpeg?auto=compress&cs=tinysrgb&w=400',
+      hair: 'https://images.pexels.com/photos/2533266/pexels-photo-2533266.jpeg?auto=compress&cs=tinysrgb&w=400',
+      glasses: 'https://images.pexels.com/photos/701877/pexels-photo-701877.jpeg?auto=compress&cs=tinysrgb&w=400',
+      sunglasses: 'https://images.pexels.com/photos/701877/pexels-photo-701877.jpeg?auto=compress&cs=tinysrgb&w=400',
+    }
+    const defaultImage = 'https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=400'
+
+    for (const p of products) {
+      if (p.product_image) continue
+      const nameLower = p.product_name.toLowerCase()
+      let matched = false
+      for (const [keyword, url] of Object.entries(categoryImages)) {
+        if (nameLower.includes(keyword)) {
+          p.product_image = url
+          matched = true
+          break
         }
-      }))
+      }
+      if (!matched) p.product_image = defaultImage
     }
 
     // Save products to DB
